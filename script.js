@@ -1,3 +1,5 @@
+// I did this reeeealy fast
+
 var map = L.map('map').setView([29.9493364, -90.0473081], 15.4);
 
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -140,29 +142,57 @@ let categories = {
   "Art": ["521 Pelican", "505 Pelican"]
 }
 
-Object.keys(categories).forEach((key, index) => {
-  categories[key] = categories[key].map(add => geoMap[add])
-});
-
-Object.keys(geoMap).forEach((address, i) => {
-  let coordString = geoMap[address];
-  let coord = coordString.split(',').map(s => Number(s));
-  console.log(coord)
-  L.marker(coord)
-    .bindPopup(address)
-    .addTo(map);
-});
+let selectedAddresses = Object.keys(geoMap);
 
 const dropdown = document.getElementById("dropdown");
+let option = document.createElement("option");
+option.value = selectedAddresses;
+option.textContent = "Show All";
+dropdown.appendChild(option);
+
 Object.keys(categories).forEach((category) => {
-  // Create a new <option> element
   var option = document.createElement("option");
   option.value = categories[category];
   option.textContent = category;
-  
-  // Append the option to the select element
+
   dropdown.appendChild(option);
 });
 
+const filterGeoMap = (addresses) => {
+  return Object.keys(geoMap)
+    .filter(key => addresses.includes(key))
+    .reduce((acc, key) => {
+      acc[key] = geoMap[key];
+      return acc;
+    }, {});
+}
 
+const renderMap = (addresses) => {
+  map.eachLayer((layer) => {
+    map.removeLayer(layer);
+  });
+
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap',
+  }).addTo(map);
+
+  const addressMap = filterGeoMap(addresses);
+  Object.keys(addressMap).forEach((address, i) => {
+    let coordString = geoMap[address];
+    let coord = coordString.split(',').map(s => Number(s));
+    L.marker(coord)
+      .bindPopup(address)
+      .addTo(map);
+  });
+}
+
+const onDropdownChange = () => {
+  selectedAddresses = dropdown.value;
+  renderMap(selectedAddresses);
+}
+
+dropdown.onchange = onDropdownChange;
+
+renderMap(selectedAddresses);
 
