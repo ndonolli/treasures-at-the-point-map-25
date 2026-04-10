@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>Home</title>
+    <title>Treasures at the Point 2026</title>
     <meta charset="UTF-8" />
     <meta
       name="viewport"
@@ -23,10 +23,19 @@
     <script type="module" src="script.js"></script>
   </head>
   <body>
-    <h2>Treasures at the Point 2025</h1>
-    <select id="dropdown">
-      <!-- Options will be dynamically added here -->
-    </select>
-    <div id="map"></div>
+    <main class="layout">
+      <header class="page-header">
+        <h1>Treasures at the Point 2026</h1>
+      </header>
+
+      <section class="toolbar" aria-label="Map controls">
+        <label class="control">
+          <span>Filter by category</span>
+          <select id="dropdown"></select>
+        </label>
+      </section>
+
+      <div id="map" aria-label="Treasures at the Point map"></div>
+    </main>
   </body>
 </html>
