@@ -1,9 +1,10 @@
+import { INSTALL_PROMPT_STORAGE_KEY } from "../config.js";
+
 const INSTALL_STATE_STORAGE_KEY = "tatp-installed-2026";
 
 export function setupInstallPrompt() {
-  const installAppButton = document.getElementById("install-app-button");
-  const installAppHint = document.getElementById("install-app-hint");
   let deferredInstallPrompt = null;
+  let installPromptScheduled = false;
 
   function isChromiumBrowser() {
     return /chrome|chromium|crios/i.test(window.navigator.userAgent);
@@ -25,6 +26,22 @@ export function setupInstallPrompt() {
     }
   }
 
+  function hasSeenInstallPrompt() {
+    try {
+      return window.localStorage.getItem(INSTALL_PROMPT_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  }
+
+  function markInstallPromptSeen() {
+    try {
+      window.localStorage.setItem(INSTALL_PROMPT_STORAGE_KEY, "true");
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
   function isIosDevice() {
     return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
   }
@@ -41,104 +58,77 @@ export function setupInstallPrompt() {
     return isInStandaloneMode() || hasStoredInstallState();
   }
 
-  function showInstallButton(label, hint = "") {
-    installAppButton.hidden = false;
-    installAppButton.textContent = label;
-
-    if (hint) {
-      installAppHint.hidden = false;
-      installAppHint.textContent = hint;
+  async function maybePromptForInstall() {
+    if (installPromptScheduled || isInstalledApp() || hasSeenInstallPrompt()) {
       return;
     }
 
-    installAppHint.hidden = true;
-    installAppHint.textContent = "";
-  }
-
-  function hideInstallUi() {
-    installAppButton.hidden = true;
-    installAppHint.hidden = true;
-    installAppHint.textContent = "";
-  }
-
-  function syncInstallUi() {
-    if (isInstalledApp()) {
-      hideInstallUi();
-      return;
-    }
+    installPromptScheduled = true;
 
     if (window.location.protocol === "file:") {
-      showInstallButton("Install App", "Install works from the hosted site, not when opening the file directly.");
-      installAppButton.disabled = true;
+      installPromptScheduled = false;
       return;
     }
 
     if (isIosDevice()) {
-      showInstallButton("Install App", "On iPhone or iPad, tap Share and choose Add to Home Screen.");
-      installAppButton.disabled = false;
+      markInstallPromptSeen();
+      installPromptScheduled = false;
+
+      const wantsInstallHelp = window.confirm(
+        "Would you like to install Treasures at the Point on this device?\n\nOn iPhone or iPad, tap Share and then choose Add to Home Screen."
+      );
+
+      if (wantsInstallHelp) {
+        window.alert("To install this app on iPhone or iPad, tap the Share button in Safari and then choose Add to Home Screen.");
+      }
+
       return;
     }
 
     if (!deferredInstallPrompt) {
-      if (isChromiumBrowser()) {
-        showInstallButton("Install App", "If Chrome does not show the install sheet, use the browser menu and choose Install app or Add to Home screen.");
-        installAppButton.disabled = false;
-        return;
-      }
-
-      showInstallButton("Install App");
-      installAppButton.disabled = false;
+      installPromptScheduled = false;
       return;
     }
 
-    showInstallButton("Install App");
-    installAppButton.disabled = false;
+    markInstallPromptSeen();
+
+    const wantsInstall = window.confirm("Would you like to install Treasures at the Point on this device?");
+
+    if (!wantsInstall) {
+      installPromptScheduled = false;
+      return;
+    }
+
+    deferredInstallPrompt.prompt();
+
+    try {
+      const result = await deferredInstallPrompt.userChoice;
+
+      if (result?.outcome === "accepted") {
+        markInstalled();
+      }
+    } finally {
+      deferredInstallPrompt = null;
+      installPromptScheduled = false;
+    }
   }
-
-  installAppButton.addEventListener("click", async () => {
-    if (deferredInstallPrompt) {
-      deferredInstallPrompt.prompt();
-
-      try {
-        await deferredInstallPrompt.userChoice;
-      } finally {
-        deferredInstallPrompt = null;
-        syncInstallUi();
-      }
-
-      return;
-    }
-
-    if (isIosDevice() && !isInStandaloneMode()) {
-      window.alert("To install this app on iPhone or iPad, tap the Share button in Safari and then choose Add to Home Screen.");
-      return;
-    }
-
-    if (!deferredInstallPrompt) {
-      if (isChromiumBrowser()) {
-        window.alert("If Chrome does not show the install sheet here, open the browser menu and choose Install app or Add to Home screen.");
-        return;
-      }
-
-      window.alert("This browser has not exposed the install prompt yet. If install is supported, try again after interacting with the page or use the browser menu.");
-    }
-  });
 
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    syncInstallUi();
+    void maybePromptForInstall();
   });
 
   window.addEventListener("appinstalled", () => {
     deferredInstallPrompt = null;
+    markInstallPromptSeen();
     markInstalled();
-    hideInstallUi();
   });
 
   if (isInStandaloneMode()) {
+    markInstallPromptSeen();
     markInstalled();
   }
 
-  syncInstallUi();
+  void maybePromptForInstall();
 }
