@@ -4,6 +4,13 @@ const CORE_ASSETS = [
   "./index.html",
   "./styles.css",
   "./script.js",
+  "./js/config.js",
+  "./js/utils.js",
+  "./js/data/listings-data.js",
+  "./js/modules/filters.js",
+  "./js/modules/install.js",
+  "./js/modules/map.js",
+  "./js/modules/service-worker.js",
   "./manifest.webmanifest",
   "./icon-treasure-chest.svg",
 ];
