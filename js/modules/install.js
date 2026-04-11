@@ -3,6 +3,10 @@ export function setupInstallPrompt() {
   const installAppHint = document.getElementById("install-app-hint");
   let deferredInstallPrompt = null;
 
+  function isChromiumBrowser() {
+    return /chrome|chromium|crios/i.test(window.navigator.userAgent);
+  }
+
   function isIosDevice() {
     return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
   }
@@ -50,7 +54,14 @@ export function setupInstallPrompt() {
     }
 
     if (!deferredInstallPrompt) {
-      hideInstallUi();
+      if (isChromiumBrowser()) {
+        showInstallButton("Install App", "If Chrome does not show the install sheet, use the browser menu and choose Install app or Add to Home screen.");
+        installAppButton.disabled = false;
+        return;
+      }
+
+      showInstallButton("Install App");
+      installAppButton.disabled = false;
       return;
     }
 
@@ -74,6 +85,16 @@ export function setupInstallPrompt() {
 
     if (isIosDevice() && !isInStandaloneMode()) {
       window.alert("To install this app on iPhone or iPad, tap the Share button in Safari and then choose Add to Home Screen.");
+      return;
+    }
+
+    if (!deferredInstallPrompt) {
+      if (isChromiumBrowser()) {
+        window.alert("If Chrome does not show the install sheet here, open the browser menu and choose Install app or Add to Home screen.");
+        return;
+      }
+
+      window.alert("This browser has not exposed the install prompt yet. If install is supported, try again after interacting with the page or use the browser menu.");
     }
   });
 
