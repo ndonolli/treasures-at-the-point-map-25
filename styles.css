@@ -104,9 +104,13 @@ body {
 
 .site-footer {
   padding: 4px 16px 2px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "install credit"
+    "hint hint";
+  align-items: center;
+  column-gap: 12px;
   color: var(--muted);
   font-size: 0.92rem;
 }
@@ -132,6 +136,7 @@ body {
   vertical-align: middle;
   cursor: pointer;
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.12);
+  grid-area: install;
 }
 
 #install-app-button.install-button:hover,
@@ -151,6 +156,7 @@ body {
 }
 
 .install-hint {
+  grid-area: hint;
   margin: 0 0 4px;
   color: var(--muted);
   font-size: 0.72rem;
@@ -163,7 +169,8 @@ body {
 }
 
 .site-footer > p:last-child {
-  align-self: stretch;
+  grid-area: credit;
+  justify-self: end;
   text-align: right;
 }
 
@@ -203,6 +210,10 @@ body {
 
   .toolbar {
     padding: 0 12px 10px;
+  }
+
+  .site-footer {
+    column-gap: 10px;
   }
 
   .install-button {
