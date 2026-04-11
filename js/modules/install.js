@@ -1,3 +1,5 @@
+const INSTALL_STATE_STORAGE_KEY = "tatp-installed-2026";
+
 export function setupInstallPrompt() {
   const installAppButton = document.getElementById("install-app-button");
   const installAppHint = document.getElementById("install-app-hint");
@@ -7,12 +9,36 @@ export function setupInstallPrompt() {
     return /chrome|chromium|crios/i.test(window.navigator.userAgent);
   }
 
+  function hasStoredInstallState() {
+    try {
+      return window.localStorage.getItem(INSTALL_STATE_STORAGE_KEY) === "true";
+    } catch {
+      return false;
+    }
+  }
+
+  function markInstalled() {
+    try {
+      window.localStorage.setItem(INSTALL_STATE_STORAGE_KEY, "true");
+    } catch {
+      // Ignore storage failures.
+    }
+  }
+
   function isIosDevice() {
     return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
   }
 
   function isInStandaloneMode() {
-    return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+    return window.matchMedia("(display-mode: standalone)").matches
+      || window.matchMedia("(display-mode: minimal-ui)").matches
+      || window.matchMedia("(display-mode: fullscreen)").matches
+      || window.navigator.standalone === true
+      || document.referrer.startsWith("android-app://");
+  }
+
+  function isInstalledApp() {
+    return isInStandaloneMode() || hasStoredInstallState();
   }
 
   function showInstallButton(label, hint = "") {
@@ -36,7 +62,7 @@ export function setupInstallPrompt() {
   }
 
   function syncInstallUi() {
-    if (isInStandaloneMode()) {
+    if (isInstalledApp()) {
       hideInstallUi();
       return;
     }
@@ -106,8 +132,13 @@ export function setupInstallPrompt() {
 
   window.addEventListener("appinstalled", () => {
     deferredInstallPrompt = null;
+    markInstalled();
     hideInstallUi();
   });
+
+  if (isInStandaloneMode()) {
+    markInstalled();
+  }
 
   syncInstallUi();
 }
