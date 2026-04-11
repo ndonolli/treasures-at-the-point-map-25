@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Purple gem icon</title>
+  <desc id="desc">A purple diamond icon with crisp filled facets.</desc>
+  <rect width="512" height="512" rx="112" fill="#ffffff"/>
+  <g stroke="#5f259f" stroke-linejoin="round">
+    <path d="M146 176h220l52 74-162 168-162-168z" fill="#8550ef" stroke-width="18"/>
+    <path d="M146 176l52 74h116l52-74" fill="#bb9bff" stroke-width="18"/>
+    <path d="M198 176l58 74 58-74" fill="#e0d0ff" stroke-width="18"/>
+    <path d="M198 250l58 168 58-168" fill="#6f39d7" stroke-width="18"/>
+    <path d="M256 176v242" fill="none" stroke-width="14" stroke-linecap="round"/>
+    <path d="M146 176l110 242 110-242" fill="none" stroke-width="14" stroke-linecap="round"/>
+    <path d="M198 250h116" fill="none" stroke-width="12" stroke-linecap="round" opacity="0.8"/>
+  </g>
+</svg>
