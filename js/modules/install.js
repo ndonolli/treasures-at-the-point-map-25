@@ -1,8 +1,7 @@
-import { INSTALL_PROMPT_STORAGE_KEY } from "../config.js";
-
 export function setupInstallPrompt() {
+  const installAppButton = document.getElementById("install-app-button");
+  const installAppHint = document.getElementById("install-app-hint");
   let deferredInstallPrompt = null;
-  let installPromptScheduled = false;
 
   function isIosDevice() {
     return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
@@ -12,82 +11,82 @@ export function setupInstallPrompt() {
     return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   }
 
-  function hasSeenInstallPrompt() {
-    try {
-      return window.localStorage.getItem(INSTALL_PROMPT_STORAGE_KEY) === "true";
-    } catch {
-      return false;
-    }
-  }
+  function showInstallButton(label, hint = "") {
+    installAppButton.hidden = false;
+    installAppButton.textContent = label;
 
-  function markInstallPromptSeen() {
-    try {
-      window.localStorage.setItem(INSTALL_PROMPT_STORAGE_KEY, "true");
-    } catch {
-      // Ignore storage failures and fall back to per-page behavior.
-    }
-  }
-
-  async function maybePromptForInstall() {
-    if (installPromptScheduled || isInStandaloneMode() || hasSeenInstallPrompt()) {
+    if (hint) {
+      installAppHint.hidden = false;
+      installAppHint.textContent = hint;
       return;
     }
 
-    installPromptScheduled = true;
+    installAppHint.hidden = true;
+    installAppHint.textContent = "";
+  }
+
+  function hideInstallUi() {
+    installAppButton.hidden = true;
+    installAppHint.hidden = true;
+    installAppHint.textContent = "";
+  }
+
+  function syncInstallUi() {
+    if (isInStandaloneMode()) {
+      hideInstallUi();
+      return;
+    }
 
     if (window.location.protocol === "file:") {
-      installPromptScheduled = false;
+      showInstallButton("Install App", "Install works from the hosted site, not when opening the file directly.");
+      installAppButton.disabled = true;
       return;
     }
 
     if (isIosDevice()) {
-      markInstallPromptSeen();
-      installPromptScheduled = false;
+      showInstallButton("Install App", "On iPhone or iPad, tap Share and choose Add to Home Screen.");
+      installAppButton.disabled = false;
+      return;
+    }
 
-      const wantsInstallHelp = window.confirm(
-        "Would you like to install Treasures at the Point on this device?\n\nOn iPhone or iPad, tap Share and then choose Add to Home Screen."
-      );
+    if (!deferredInstallPrompt) {
+      hideInstallUi();
+      return;
+    }
 
-      if (wantsInstallHelp) {
-        window.alert("To install this app on iPhone or iPad, tap the Share button in Safari and then choose Add to Home Screen.");
+    showInstallButton("Install App");
+    installAppButton.disabled = false;
+  }
+
+  installAppButton.addEventListener("click", async () => {
+    if (deferredInstallPrompt) {
+      deferredInstallPrompt.prompt();
+
+      try {
+        await deferredInstallPrompt.userChoice;
+      } finally {
+        deferredInstallPrompt = null;
+        syncInstallUi();
       }
 
       return;
     }
 
-    if (!deferredInstallPrompt) {
-      installPromptScheduled = false;
-      return;
+    if (isIosDevice() && !isInStandaloneMode()) {
+      window.alert("To install this app on iPhone or iPad, tap the Share button in Safari and then choose Add to Home Screen.");
     }
-
-    markInstallPromptSeen();
-    const wantsInstall = window.confirm("Would you like to install Treasures at the Point on this device?");
-
-    if (!wantsInstall) {
-      installPromptScheduled = false;
-      return;
-    }
-
-    deferredInstallPrompt.prompt();
-
-    try {
-      await deferredInstallPrompt.userChoice;
-    } finally {
-      deferredInstallPrompt = null;
-      installPromptScheduled = false;
-    }
-  }
+  });
 
   window.addEventListener("beforeinstallprompt", (event) => {
     event.preventDefault();
     deferredInstallPrompt = event;
-    void maybePromptForInstall();
+    syncInstallUi();
   });
 
   window.addEventListener("appinstalled", () => {
     deferredInstallPrompt = null;
-    markInstallPromptSeen();
+    hideInstallUi();
   });
 
-  void maybePromptForInstall();
+  syncInstallUi();
 }
