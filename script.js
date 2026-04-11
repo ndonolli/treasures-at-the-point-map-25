@@ -1,6 +1,7 @@
 const DEFAULT_CENTER = [29.9493364, -90.0473081];
 const DEFAULT_ZOOM = 15.4;
 const ALL_FILTER_VALUE = "__all__";
+const INSTALL_PROMPT_STORAGE_KEY = "tatp-install-prompt-seen-2026";
 
 const map = L.map("map").setView(DEFAULT_CENTER, DEFAULT_ZOOM);
 
@@ -496,6 +497,8 @@ const geoMap = {
 const unresolvedAddresses = ["224 Sequin", "501 Sequin", "614 Sequin", "636 Sequin"];
 
 const dropdown = document.getElementById("dropdown");
+let deferredInstallPrompt = null;
+let installPromptScheduled = false;
 
 function normalizeCoordString(coordString) {
   if (!coordString || typeof coordString !== "string") {
@@ -534,7 +537,6 @@ function buildCategoryIndex(data) {
 const categoryIndex = buildCategoryIndex(listings);
 const allAddresses = Object.keys(listings).sort((left, right) => left.localeCompare(right, undefined, { numeric: true }));
 let selectedAddresses = [...allAddresses];
-let geocodeInFlight = false;
 
 function escapeHtml(value) {
   return String(value)
@@ -620,8 +622,94 @@ function onDropdownChange() {
 
 dropdown.addEventListener("change", onDropdownChange);
 
+function isIosDevice() {
+  return /iphone|ipad|ipod/i.test(window.navigator.userAgent);
+}
+
+function isInStandaloneMode() {
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+
+function hasSeenInstallPrompt() {
+  try {
+    return window.localStorage.getItem(INSTALL_PROMPT_STORAGE_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function markInstallPromptSeen() {
+  try {
+    window.localStorage.setItem(INSTALL_PROMPT_STORAGE_KEY, "true");
+  } catch {
+    // Ignore storage failures and fall back to per-page behavior.
+  }
+}
+
+async function maybePromptForInstall() {
+  if (installPromptScheduled || isInStandaloneMode() || hasSeenInstallPrompt()) {
+    return;
+  }
+
+  installPromptScheduled = true;
+
+  if (window.location.protocol === "file:") {
+    installPromptScheduled = false;
+    return;
+  }
+
+  if (isIosDevice()) {
+    markInstallPromptSeen();
+    installPromptScheduled = false;
+
+    const wantsInstallHelp = window.confirm(
+      "Would you like to install Treasures at the Point on this device?\n\nOn iPhone or iPad, tap Share and then choose Add to Home Screen."
+    );
+
+    if (wantsInstallHelp) {
+      window.alert("To install this app on iPhone or iPad, tap the Share button in Safari and then choose Add to Home Screen.");
+    }
+
+    return;
+  }
+
+  if (!deferredInstallPrompt) {
+    installPromptScheduled = false;
+    return;
+  }
+
+  markInstallPromptSeen();
+  const wantsInstall = window.confirm("Would you like to install Treasures at the Point on this device?");
+
+  if (!wantsInstall) {
+    installPromptScheduled = false;
+    return;
+  }
+
+  deferredInstallPrompt.prompt();
+
+  try {
+    await deferredInstallPrompt.userChoice;
+  } finally {
+    deferredInstallPrompt = null;
+    installPromptScheduled = false;
+  }
+}
+
+window.addEventListener("beforeinstallprompt", (event) => {
+  event.preventDefault();
+  deferredInstallPrompt = event;
+  void maybePromptForInstall();
+});
+
+window.addEventListener("appinstalled", () => {
+  deferredInstallPrompt = null;
+  markInstallPromptSeen();
+});
+
 populateDropdown();
 renderMap(selectedAddresses);
+void maybePromptForInstall();
 
 if (unresolvedAddresses.length) {
   console.warn("Listings without stored coordinates:", unresolvedAddresses);
